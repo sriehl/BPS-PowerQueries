@@ -2,4 +2,10 @@
   <permission name="/admin/students/accessaccounts.html">
     <implies allow="post">/ws/schema/query/org.billingsschools.pq.oidc_student_update</implies>
   </permission>
+  <permission name="/admin/students/health/home_healthplan.html">
+    <implies allow="post">/ws/schema/query/org.billingsschools.pq.healthcare_plans_needed_acknowledged</implies>
+  </permission>
+  <permission name="/teachers/home.html">
+    <implies allow="post">/ws/schema/query/org.billingsschools.pq.healthcare_plans_needed_acknowledged</implies>
+  </permission>
 </permission_mappings>

@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<queries>
+  <query name="org.billingsschools.pq.healthcare_plans_needed_acknowledged" coreTable="STUDENTS" flattened="true" tags="">
+    <summary>BPS - Healthcare Plans needed to be acknowledged</summary>
+    <description>Students that need to have a healthcare plan that need to be acknowledged.</description>
+    <args>
+      <arg name="curuserid" column="readreceipt.userid" required="true" description="Current Users DCID" type="primitive" default="~[x:users_dcid]" />
+      <arg name="curschoolid" column="students.schoolid" required="true" description="Current School ID" type="primitive" default="~(curschoolid)" />
+    </args>
+    <columns>
+      <column column="STUDENTS.DCID">STUDENT_DCID</column>
+    </columns>
+    <sql>
+      <![CDATA[
+        select
+          students.dcid
+        from
+          healthstudentplan
+          left join students
+            on students.dcid = healthstudentplan.studentsdcid
+          left join readreceipt
+            on readreceipt.category = 'HEALTHPLAN'
+            and readreceipt.documentid = healthstudentplan.healthstudentplanid
+            and readreceipt.documentversion = to_char(healthstudentplan.versionmodtime, 'YYYY-MM-DD HH24:MI:SS')
+            and readreceipt.userid = :curuserid
+        where
+          students.schoolid = :curschoolid
+          and students.enroll_status in (-1, 0)
+          and readreceipt.readreceiptid is null
+          and (
+            healthstudentplan.enddate is null
+            or healthstudentplan.enddate > sysdate
+          )
+      ]]>
+    </sql>
+  </query>
+</queries>
