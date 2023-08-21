@@ -1,0 +1,221 @@
+<?xml version="1.0"?>
+<queries>
+  <query name="org.billingsschools.pq.library_patrons_elem" coreTable="STUDENTS" flattened="true" tags="">
+    <summary>BPS - Library Patrons Elementary</summary>
+    <description>Library patron load files - elementary</description>
+    <columns>
+      <column column="STUDENTS.STUDENT_NUMBER">user_alt_ID</column>
+      <column column="STUDENTS.STUDENT_NUMBER">user_ID</column>
+      <column column="STUDENTS.STUDENT_NUMBER">address_flag</column>
+      <column column="STUDENTS.STUDENT_NUMBER">address_2___email_address</column>
+      <column column="SECTIONS.ROOM">department</column>
+      <column column="USERS.LAST_NAME">group_id</column>
+      <column column="SCHOOLS.NAME">library</column>
+      <column column="STUDENTS.GRADE_LEVEL">profile</column>
+      <column column="STUDENTS.GRADE_LEVEL">user_category3</column>
+      <column column="STUDENTS.GENDER">user_category8</column>
+      <column column="STUDENTS.FIRST_NAME">first_name</column>
+      <column column="STUDENTS.LAST_NAME">last_name</column>
+    </columns>
+    <sql>
+      <![CDATA[
+        with config as (
+          select
+            case
+              when t.firstday > sysdate then t.firstday
+              else sysdate
+            end effdate
+          from
+            terms t
+          where
+            t.id = (extract(year from sysdate) + case when extract(month from sysdate) >= 7 then 1 else 0 end - 1991) * 100
+            and t.schoolid = 0
+            and t.isyearrec = 1
+        )
+
+        , studentemail as (
+          select
+            ssm.studentsdcid,
+            psc.email
+          from
+            psm_studentcontact psc
+            inner join sync_studentmap ssm
+              on ssm.studentid = psc.studentid
+            inner join psm_studentcontacttype psct
+              on psct.id = psc.studentcontacttypeid
+              and psct.name = 'Self'
+          where
+            psc.email is not null
+        )
+
+        select
+            lpad(students.student_number, 8, '0') "user alt ID"
+          , '20620' || lpad(students.student_number, 9, '0') "user ID"
+          , 2 "address flag"
+          , studentemail.email "address 2 - email address"
+          , sections.room "department"
+          , upper(substr(users.last_name, 1, 14)) "group id"
+          , 'BS2-' || u_school_codes.sirsi "library"
+          , 'BS2-STU' || case students.grade_level when 0 then 'K' else to_char(students.grade_level) end "profile"
+          , case students.grade_level
+              when 0 then 'KINDER'
+              when 1 then '1ST-GRADE'
+              when 2 then '2ND-GRADE'
+              when 3 then '3RD-GRADE'
+              when 9 then 'FRESHMAN'
+              when 10 then 'SOPHOMORE'
+              when 11 then 'JUNIOR'
+              when 12 then 'SENIOR'
+              else students.grade_level || 'TH-GRADE'
+            end "user category3"
+          , case students.gender when 'M' then 'MALE' when 'F' then 'FEMALE' end "user category8"
+          , substr(upper(students.first_name), 1, 25) "first name"
+          , substr(upper(students.last_name), 1, 60) "last name"
+        from
+          students
+          left join cc
+            on students.id = cc.studentid
+          left join sections
+            on sections.id = cc.sectionid
+          left join schools
+            on schools.school_number = students.enrollment_schoolid
+          left join u_school_codes
+            on u_school_codes.schoolsdcid = schools.dcid
+          left join schoolstaff
+            on schoolstaff.id = cc.teacherid
+          left join users
+            on users.dcid = schoolstaff.users_dcid
+          left join u_def_ext_students
+            on u_def_ext_students.studentsdcid = students.dcid
+          left join (select * from studentemail) studentemail
+            on studentemail.studentsdcid = students.dcid
+        where
+              students.enroll_status in (-1, 0)
+          and cc.dateenrolled < (select effdate from config) + 7
+          and cc.dateleft >= (select effdate from config)
+          and students.schoolid not in (79438)
+          and coalesce(u_def_ext_students.remote_learning, 0) != 1
+          and (
+            (
+              students.grade_level in (0,1,2,3,4,5)
+              and cc.course_number in ('KD', '1', '2', '3', '4', '5')
+            )
+          )
+
+        order by
+          students.lastfirst
+      ]]>
+    </sql>
+  </query>
+  <query name="org.billingsschools.pq.library_patrons_mshs" coreTable="STUDENTS" flattened="true" tags="">
+    <summary>BPS - Library Patrons MS and HS</summary>
+    <description>Library patron load files - middle school and high school</description>
+    <columns>
+      <column column="STUDENTS.STUDENT_NUMBER">user_alt_ID</column>
+      <column column="STUDENTS.STUDENT_NUMBER">user_ID</column>
+      <column column="STUDENTS.STUDENT_NUMBER">address_flag</column>
+      <column column="STUDENTS.STUDENT_NUMBER">address_2___email_address</column>
+      <column column="SECTIONS.ROOM">department</column>
+      <column column="USERS.LAST_NAME">group_id</column>
+      <column column="SCHOOLS.NAME">library</column>
+      <column column="STUDENTS.GRADE_LEVEL">profile</column>
+      <column column="STUDENTS.GRADE_LEVEL">user_category3</column>
+      <column column="STUDENTS.GENDER">user_category8</column>
+      <column column="STUDENTS.FIRST_NAME">first_name</column>
+      <column column="STUDENTS.LAST_NAME">last_name</column>
+    </columns>
+    <sql>
+      <![CDATA[
+        with config as (
+          select
+            case
+              when t.firstday > sysdate then t.firstday
+              else sysdate
+            end effdate
+          from
+            terms t
+          where
+            t.id = (extract(year from sysdate) + case when extract(month from sysdate) >= 7 then 1 else 0 end - 1991) * 100
+            and t.schoolid = 0
+            and t.isyearrec = 1
+        )
+
+        , studentemail as (
+          select
+            ssm.studentsdcid,
+            psc.email
+          from
+            psm_studentcontact psc
+            inner join sync_studentmap ssm
+              on ssm.studentid = psc.studentid
+            inner join psm_studentcontacttype psct
+              on psct.id = psc.studentcontacttypeid
+              and psct.name = 'Self'
+          where
+            psc.email is not null
+        )
+
+        select
+            lpad(students.student_number, 8, '0') "user alt ID"
+          , '20620' || lpad(students.student_number, 9, '0') "user ID"
+          , 2 "address flag"
+          , studentemail.email "address 2 - email address"
+          , sections.room "department"
+          , upper(substr(users.last_name, 1, 14)) "group id"
+          , 'BS2-' || u_school_codes.sirsi "library"
+          , 'BS2-STU' || case students.grade_level when 0 then 'K' else to_char(students.grade_level) end "profile"
+          , case students.grade_level
+              when 0 then 'KINDER'
+              when 1 then '1ST-GRADE'
+              when 2 then '2ND-GRADE'
+              when 3 then '3RD-GRADE'
+              when 9 then 'FRESHMAN'
+              when 10 then 'SOPHOMORE'
+              when 11 then 'JUNIOR'
+              when 12 then 'SENIOR'
+              else students.grade_level || 'TH-GRADE'
+            end "user category3"
+          , case students.gender when 'M' then 'MALE' when 'F' then 'FEMALE' end "user category8"
+          , substr(upper(students.first_name), 1, 25) "first name"
+          , substr(upper(students.last_name), 1, 60) "last name"
+        from
+          students
+          left join cc
+            on students.id = cc.studentid
+          left join sections
+            on sections.id = cc.sectionid
+          left join schools
+            on schools.school_number = students.enrollment_schoolid
+          left join u_school_codes
+            on u_school_codes.schoolsdcid = schools.dcid
+          left join schoolstaff
+            on schoolstaff.id = cc.teacherid
+          left join users
+            on users.dcid = schoolstaff.users_dcid
+          left join u_def_ext_students
+            on u_def_ext_students.studentsdcid = students.dcid
+          left join (select * from studentemail) studentemail
+            on studentemail.studentsdcid = students.dcid
+        where
+              students.enroll_status in (-1, 0)
+          and cc.dateenrolled < (select effdate from config) + 7
+          and cc.dateleft >= (select effdate from config)
+          and students.schoolid not in (79438)
+          and coalesce(u_def_ext_students.remote_learning, 0) != 1
+          and (
+            (
+              students.grade_level in (6,7,8)
+              and cc.expression in ('6(A)', '6(A-B)')
+            )
+            or (
+              students.grade_level in (9,10,11,12)
+              and cc.expression in ('3(A)', '2-3(A)', '3-4(A)', '3(A-B)')
+            )
+          )
+
+        order by
+          students.lastfirst
+      ]]>
+    </sql>
+  </query>
+</queries>
