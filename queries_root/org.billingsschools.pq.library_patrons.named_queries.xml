@@ -140,6 +140,41 @@
             and t.isyearrec = 1
         )
 
+        , schedules as (
+          select
+              cc.studentid
+            , users.last_name teacher
+            , sections.room
+            , dense_rank() over(partition by cc.studentid order by cc.dateenrolled, cc.id) rnk
+          from
+            cc
+            left join sections
+              on sections.id = cc.sectionid
+            left join section_meeting
+              on section_meeting.sectionid = sections.id
+            left join schoolstaff
+              on schoolstaff.id = cc.teacherid
+            left join users
+              on users.dcid = schoolstaff.users_dcid
+            left join students
+              on students.id = cc.studentid
+          where
+            cc.dateenrolled <= (select effdate from config) + 7
+            and cc.dateleft >= (select effdate from config)
+            and (
+              (
+                students.grade_level in (6,7,8)
+                and section_meeting.period_number = 6
+                and section_meeting.cycle_day_letter = 'A'
+              )
+              or (
+                students.grade_level in (9,10,11,12)
+                and section_meeting.period_number = 3
+                and section_meeting.cycle_day_letter = 'A'
+              )
+            )
+        )
+
         , studentemail as (
           select
             ssm.studentsdcid,
@@ -160,8 +195,8 @@
           , '20620' || lpad(students.student_number, 9, '0') "user ID"
           , 2 "address flag"
           , studentemail.email "address 2 - email address"
-          , sections.room "department"
-          , upper(substr(users.last_name, 1, 14)) "group id"
+          , schedules.room "department"
+          , upper(substr(schedules.teacher, 1, 14)) "group id"
           , 'BS2-' || u_school_codes.sirsi "library"
           , 'BS2-STU' || case students.grade_level when 0 then 'K' else to_char(students.grade_level) end "profile"
           , case students.grade_level
@@ -180,38 +215,21 @@
           , substr(upper(students.last_name), 1, 60) "last name"
         from
           students
-          left join cc
-            on students.id = cc.studentid
-          left join sections
-            on sections.id = cc.sectionid
           left join schools
             on schools.school_number = students.enrollment_schoolid
           left join u_school_codes
             on u_school_codes.schoolsdcid = schools.dcid
-          left join schoolstaff
-            on schoolstaff.id = cc.teacherid
-          left join users
-            on users.dcid = schoolstaff.users_dcid
           left join u_def_ext_students
             on u_def_ext_students.studentsdcid = students.dcid
           left join (select * from studentemail) studentemail
             on studentemail.studentsdcid = students.dcid
+          left join (select * from schedules) schedules
+            on schedules.studentid = students.id
+            and schedules.rnk = 1
         where
               students.enroll_status in (-1, 0)
-          and cc.dateenrolled < (select effdate from config) + 7
-          and cc.dateleft >= (select effdate from config)
           and students.schoolid not in (79438)
           and coalesce(u_def_ext_students.remote_learning, 0) != 1
-          and (
-            (
-              students.grade_level in (6,7,8)
-              and cc.expression in ('6(A)', '6(A-B)')
-            )
-            or (
-              students.grade_level in (9,10,11,12)
-              and cc.expression in ('3(A)', '2-3(A)', '3-4(A)', '3(A-B)')
-            )
-          )
 
         order by
           students.lastfirst
