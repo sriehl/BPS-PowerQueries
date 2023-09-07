@@ -228,6 +228,7 @@
             and schedules.rnk = 1
         where
               students.enroll_status in (-1, 0)
+          and students.grade_level >= 6
           and students.schoolid not in (79438)
           and coalesce(u_def_ext_students.remote_learning, 0) != 1
 
